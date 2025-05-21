@@ -1,42 +1,47 @@
-﻿using System.Globalization;
-using EcommerceTest;
-using OpenQA.Selenium;
+﻿using EcommerceTest;
 using OpenQA.Selenium.Support.UI;
+using OpenQA.Selenium;
+using System.Globalization;
 
 class LazadaPage
 {
     private readonly IWebDriver _driver;
+    private readonly WebDriverWait _wait;
 
-    public LazadaPage(IWebDriver driver) => _driver = driver;
+    // Locator nên khai báo ở đây
+    private readonly By productListLocator = By.CssSelector("div.Ms6aG");
+    private readonly By productNameLocator = By.CssSelector("div.RfADt > a");
+    private readonly By productPriceLocator = By.CssSelector("div.aBrP0 > span.ooOxS");
+
+    public LazadaPage(IWebDriver driver)
+    {
+        _driver = driver;
+        _wait = new WebDriverWait(driver, TimeSpan.FromSeconds(10));
+    }
 
     public void Search(string keyword)
     {
         string url = $"https://www.lazada.vn/catalog/?q={Uri.EscapeDataString(keyword)}";
         _driver.Navigate().GoToUrl(url);
-        Thread.Sleep(3000);
+        _wait.Until(d => d.FindElements(productListLocator).Count > 0);
     }
 
     public List<Product> GetProducts()
     {
         var products = new List<Product>();
-        var wait = new WebDriverWait(_driver, TimeSpan.FromSeconds(10));
 
-        wait.Until(d => d.FindElements(By.CssSelector("div.Ms6aG")).Count > 0);
-        var results = _driver.FindElements(By.CssSelector("div.Ms6aG"));
-
-        //Console.WriteLine($"Số sản phẩm tìm thấy: {results.Count}");
+        var results = _driver.FindElements(productListLocator);
 
         foreach (var result in results.Take(5))
         {
             try
             {
-                var nameElement = result.FindElement(By.CssSelector("div.RfADt > a"));
+                var nameElement = result.FindElement(productNameLocator);
                 var name = nameElement.Text;
-
                 var href = nameElement.GetAttribute("href");
                 var link = href.StartsWith("http") ? href : "https:" + href;
 
-                var priceElement = result.FindElement(By.CssSelector("div.aBrP0 > span.ooOxS"));
+                var priceElement = result.FindElement(productPriceLocator);
                 var priceText = priceElement.Text.Replace("₫", "").Replace(".", "").Trim();
 
                 if (decimal.TryParse(priceText, NumberStyles.Any, CultureInfo.InvariantCulture, out var price))
@@ -58,5 +63,4 @@ class LazadaPage
 
         return products;
     }
-
 }
